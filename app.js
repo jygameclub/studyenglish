@@ -1,21 +1,182 @@
+// ===== 存储键常量 (参考 command-hub 持久化模式) =====
+const STORAGE_KEYS = {
+    PHRASES:   'oral_ai_v6_data',
+    THEME:     'oral_ai_theme',
+    STYLE:     'oral_ai_style',
+    FONT:      'oral_ai_font',
+    FONT_SIZE: 'oral_ai_font_size',
+    API_KEY:   'oral_ai_apiKey',
+    VOICE:     'oral_ai_voice',
+    RATE:      'oral_ai_rate',
+    PITCH:     'oral_ai_pitch'
+};
+
+// ===== 持久化抽象层 =====
+const Storage = {
+    load(key, fallback = '') {
+        try { return localStorage.getItem(key) ?? fallback; }
+        catch { return fallback; }
+    },
+    loadJSON(key, fallback = null) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch { return fallback; }
+    },
+    save(key, value) {
+        try { localStorage.setItem(key, value); }
+        catch (e) { console.error('Storage save failed:', e); }
+    },
+    saveJSON(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); }
+        catch (e) { console.error('Storage saveJSON failed:', e); }
+    },
+    clearAll() {
+        localStorage.clear();
+    }
+};
+
 // ===== 数据与状态 =====
 const categories = ["全部", "餐厅", "购物", "交通", "机场", "酒店", "医疗", "商务", "社交", "通用"];
 let currentCategory = "全部";
 const defaultPhrases = [
+    // ===== 餐厅 (12条) =====
     { id: 1, type: "餐厅", en: "A table for two, please.", cn: "请给我一个两人的座位。", level: 0 },
-    { id: 2, type: "购物", en: "How much is this?", cn: "这个多少钱？", level: 0 },
-    { id: 3, type: "商务", en: "Let's touch base later this afternoon.", cn: "我们今天下午晚点联系。", level: 0 }
+    { id: 2, type: "餐厅", en: "Could I see the menu, please?", cn: "请给我看一下菜单好吗？", level: 0 },
+    { id: 3, type: "餐厅", en: "I'd like to order the steak, medium rare.", cn: "我想点一份牛排，五分熟。", level: 0 },
+    { id: 4, type: "餐厅", en: "Do you have any vegetarian options?", cn: "你们有素食选项吗？", level: 0 },
+    { id: 5, type: "餐厅", en: "Could we get the check, please?", cn: "请给我们结账好吗？", level: 0 },
+    { id: 6, type: "餐厅", en: "I'm allergic to peanuts. Does this contain any?", cn: "我对花生过敏。这道菜含花生吗？", level: 0 },
+    { id: 7, type: "餐厅", en: "What do you recommend?", cn: "你有什么推荐的吗？", level: 0 },
+    { id: 8, type: "餐厅", en: "Can I have a glass of water, please?", cn: "请给我一杯水好吗？", level: 0 },
+    { id: 9, type: "餐厅", en: "Is the tip included in the bill?", cn: "账单里包含小费了吗？", level: 0 },
+    { id: 10, type: "餐厅", en: "We'd like to split the bill, please.", cn: "我们想分开结账。", level: 0 },
+    { id: 11, type: "餐厅", en: "Could you make it less spicy?", cn: "能做得不那么辣吗？", level: 0 },
+    { id: 12, type: "餐厅", en: "I'd like to make a reservation for tonight at 7.", cn: "我想预订今晚7点的位子。", level: 0 },
+
+    // ===== 购物 (12条) =====
+    { id: 13, type: "购物", en: "How much is this?", cn: "这个多少钱？", level: 0 },
+    { id: 14, type: "购物", en: "Do you have this in a smaller size?", cn: "这个有小一号的吗？", level: 0 },
+    { id: 15, type: "购物", en: "Can I try this on?", cn: "我可以试穿一下吗？", level: 0 },
+    { id: 16, type: "购物", en: "Where is the fitting room?", cn: "试衣间在哪里？", level: 0 },
+    { id: 17, type: "购物", en: "Do you accept credit cards?", cn: "你们接受信用卡吗？", level: 0 },
+    { id: 18, type: "购物", en: "Is this on sale?", cn: "这个在打折吗？", level: 0 },
+    { id: 19, type: "购物", en: "Can I get a refund if it doesn't fit?", cn: "如果不合适可以退款吗？", level: 0 },
+    { id: 20, type: "购物", en: "I'm just looking, thanks.", cn: "我只是看看，谢谢。", level: 0 },
+    { id: 21, type: "购物", en: "Could you give me a discount?", cn: "能给我打个折吗？", level: 0 },
+    { id: 22, type: "购物", en: "Do you have this in another color?", cn: "这个有其他颜色吗？", level: 0 },
+    { id: 23, type: "购物", en: "Where can I find the electronics section?", cn: "电子产品区在哪里？", level: 0 },
+    { id: 24, type: "购物", en: "I'll take this one. Could you wrap it up?", cn: "我要这个，能帮我包起来吗？", level: 0 },
+
+    // ===== 交通 (12条) =====
+    { id: 25, type: "交通", en: "How do I get to the nearest subway station?", cn: "最近的地铁站怎么走？", level: 0 },
+    { id: 26, type: "交通", en: "Could you take me to this address, please?", cn: "请送我到这个地址。", level: 0 },
+    { id: 27, type: "交通", en: "How long does it take to get there?", cn: "到那里需要多长时间？", level: 0 },
+    { id: 28, type: "交通", en: "Is this the right bus to downtown?", cn: "这是去市中心的公交车吗？", level: 0 },
+    { id: 29, type: "交通", en: "Where can I buy a transit pass?", cn: "在哪里能买到交通卡？", level: 0 },
+    { id: 30, type: "交通", en: "Please stop here. How much do I owe you?", cn: "请在这里停车。多少钱？", level: 0 },
+    { id: 31, type: "交通", en: "Which platform does the train leave from?", cn: "火车从哪个站台出发？", level: 0 },
+    { id: 32, type: "交通", en: "I'd like to rent a car for three days.", cn: "我想租一辆车，租三天。", level: 0 },
+    { id: 33, type: "交通", en: "Does this train go to Central Station?", cn: "这趟火车到中央车站吗？", level: 0 },
+    { id: 34, type: "交通", en: "Excuse me, is this seat taken?", cn: "请问这个座位有人吗？", level: 0 },
+    { id: 35, type: "交通", en: "What time is the last bus?", cn: "末班车是几点？", level: 0 },
+    { id: 36, type: "交通", en: "Could you call a taxi for me?", cn: "能帮我叫一辆出租车吗？", level: 0 },
+
+    // ===== 机场 (12条) =====
+    { id: 37, type: "机场", en: "Where is the check-in counter for Flight CA981?", cn: "CA981航班的值机柜台在哪？", level: 0 },
+    { id: 38, type: "机场", en: "I'd like a window seat, please.", cn: "请给我一个靠窗的座位。", level: 0 },
+    { id: 39, type: "机场", en: "How many bags can I check in?", cn: "我可以托运几件行李？", level: 0 },
+    { id: 40, type: "机场", en: "Where is the departure gate?", cn: "登机口在哪里？", level: 0 },
+    { id: 41, type: "机场", en: "My flight has been delayed. When is the next one?", cn: "我的航班延误了。下一班是什么时候？", level: 0 },
+    { id: 42, type: "机场", en: "I have nothing to declare.", cn: "我没有需要申报的物品。", level: 0 },
+    { id: 43, type: "机场", en: "Where can I pick up my luggage?", cn: "我在哪里取行李？", level: 0 },
+    { id: 44, type: "机场", en: "Is there free Wi-Fi in the airport?", cn: "机场有免费 Wi-Fi 吗？", level: 0 },
+    { id: 45, type: "机场", en: "I'd like to change my seat assignment.", cn: "我想换一下座位。", level: 0 },
+    { id: 46, type: "机场", en: "What is the boarding time?", cn: "登机时间是几点？", level: 0 },
+    { id: 47, type: "机场", en: "My luggage is missing. Can you help me find it?", cn: "我的行李丢了，能帮我找一下吗？", level: 0 },
+    { id: 48, type: "机场", en: "Where is the currency exchange?", cn: "货币兑换处在哪里？", level: 0 },
+
+    // ===== 酒店 (12条) =====
+    { id: 49, type: "酒店", en: "I have a reservation under the name Zhang.", cn: "我有一个张姓的预订。", level: 0 },
+    { id: 50, type: "酒店", en: "What time is check-out?", cn: "退房时间是几点？", level: 0 },
+    { id: 51, type: "酒店", en: "Could I have a late check-out?", cn: "可以延迟退房吗？", level: 0 },
+    { id: 52, type: "酒店", en: "Is breakfast included?", cn: "包含早餐吗？", level: 0 },
+    { id: 53, type: "酒店", en: "The air conditioning in my room isn't working.", cn: "我房间的空调坏了。", level: 0 },
+    { id: 54, type: "酒店", en: "Could I get some extra towels?", cn: "能多给我几条毛巾吗？", level: 0 },
+    { id: 55, type: "酒店", en: "What's the Wi-Fi password?", cn: "Wi-Fi 密码是什么？", level: 0 },
+    { id: 56, type: "酒店", en: "I'd like to book a room for two nights.", cn: "我想订一间房，住两晚。", level: 0 },
+    { id: 57, type: "酒店", en: "Is there a gym or swimming pool?", cn: "酒店有健身房或游泳池吗？", level: 0 },
+    { id: 58, type: "酒店", en: "Could you recommend a good restaurant nearby?", cn: "能推荐附近的好餐厅吗？", level: 0 },
+    { id: 59, type: "酒店", en: "I'd like to request a room change.", cn: "我想换一间房。", level: 0 },
+    { id: 60, type: "酒店", en: "Can I leave my luggage here after check-out?", cn: "退房后可以把行李寄存在这里吗？", level: 0 },
+
+    // ===== 医疗 (12条) =====
+    { id: 61, type: "医疗", en: "I need to see a doctor. It's urgent.", cn: "我需要看医生，很紧急。", level: 0 },
+    { id: 62, type: "医疗", en: "I have a terrible headache.", cn: "我头疼得厉害。", level: 0 },
+    { id: 63, type: "医疗", en: "I'm allergic to penicillin.", cn: "我对青霉素过敏。", level: 0 },
+    { id: 64, type: "医疗", en: "Where is the nearest pharmacy?", cn: "最近的药店在哪里？", level: 0 },
+    { id: 65, type: "医疗", en: "I've been feeling dizzy since this morning.", cn: "我从今早开始一直头晕。", level: 0 },
+    { id: 66, type: "医疗", en: "Do I need a prescription for this medicine?", cn: "这个药需要处方吗？", level: 0 },
+    { id: 67, type: "医疗", en: "I have a fever and a sore throat.", cn: "我发烧了，嗓子也疼。", level: 0 },
+    { id: 68, type: "医疗", en: "How often should I take this medication?", cn: "这个药多久吃一次？", level: 0 },
+    { id: 69, type: "医疗", en: "I think I sprained my ankle.", cn: "我觉得我扭到脚踝了。", level: 0 },
+    { id: 70, type: "医疗", en: "Is this covered by my travel insurance?", cn: "这个在我的旅行保险范围内吗？", level: 0 },
+    { id: 71, type: "医疗", en: "I need to fill this prescription.", cn: "我需要按这个处方配药。", level: 0 },
+    { id: 72, type: "医疗", en: "Could you explain the diagnosis to me?", cn: "能给我解释一下诊断结果吗？", level: 0 },
+
+    // ===== 商务 (12条) =====
+    { id: 73, type: "商务", en: "Let's touch base later this afternoon.", cn: "我们今天下午晚点联系。", level: 0 },
+    { id: 74, type: "商务", en: "Could we schedule a meeting for next Monday?", cn: "我们能把会议安排在下周一吗？", level: 0 },
+    { id: 75, type: "商务", en: "I'd like to go over the quarterly report.", cn: "我想过一下季度报告。", level: 0 },
+    { id: 76, type: "商务", en: "Let me walk you through the proposal.", cn: "让我带你过一遍这个方案。", level: 0 },
+    { id: 77, type: "商务", en: "We need to circle back on this issue.", cn: "我们需要回头再讨论这个问题。", level: 0 },
+    { id: 78, type: "商务", en: "I'll send you the follow-up email by end of day.", cn: "我会在今天下班前给你发后续邮件。", level: 0 },
+    { id: 79, type: "商务", en: "What's the timeline for this project?", cn: "这个项目的时间线是怎样的？", level: 0 },
+    { id: 80, type: "商务", en: "Let's take this offline and discuss it later.", cn: "我们线下再讨论这件事吧。", level: 0 },
+    { id: 81, type: "商务", en: "Could you share the slides before the meeting?", cn: "能在会议前分享一下幻灯片吗？", level: 0 },
+    { id: 82, type: "商务", en: "I think we're on the same page.", cn: "我觉得我们的想法一致。", level: 0 },
+    { id: 83, type: "商务", en: "Let's keep the momentum going on this.", cn: "让我们在这件事上保持势头。", level: 0 },
+    { id: 84, type: "商务", en: "I'll loop in the marketing team on this.", cn: "我会把市场团队拉进来一起讨论。", level: 0 },
+
+    // ===== 社交 (12条) =====
+    { id: 85, type: "社交", en: "It's so nice to meet you!", cn: "很高兴认识你！", level: 0 },
+    { id: 86, type: "社交", en: "What do you do for a living?", cn: "你是做什么工作的？", level: 0 },
+    { id: 87, type: "社交", en: "Where are you from originally?", cn: "你老家是哪里的？", level: 0 },
+    { id: 88, type: "社交", en: "Would you like to grab a coffee sometime?", cn: "有空一起喝杯咖啡吗？", level: 0 },
+    { id: 89, type: "社交", en: "I had a great time tonight. Thanks for having me!", cn: "今晚很开心，谢谢你的招待！", level: 0 },
+    { id: 90, type: "社交", en: "Let me introduce you to my friend.", cn: "让我给你介绍一下我的朋友。", level: 0 },
+    { id: 91, type: "社交", en: "How have you been? It's been ages!", cn: "你最近怎么样？好久不见了！", level: 0 },
+    { id: 92, type: "社交", en: "That sounds amazing! Tell me more about it.", cn: "听起来太棒了！跟我多说说。", level: 0 },
+    { id: 93, type: "社交", en: "Do you have any plans for the weekend?", cn: "周末有什么安排吗？", level: 0 },
+    { id: 94, type: "社交", en: "I'm sorry, I didn't catch your name.", cn: "抱歉，我没听清你的名字。", level: 0 },
+    { id: 95, type: "社交", en: "Feel free to reach out anytime.", cn: "随时联系我。", level: 0 },
+    { id: 96, type: "社交", en: "It was lovely chatting with you. Let's keep in touch!", cn: "和你聊天很愉快，保持联系！", level: 0 },
+
+    // ===== 通用 (12条) =====
+    { id: 97, type: "通用", en: "Excuse me, could you help me with something?", cn: "不好意思，能帮我一下吗？", level: 0 },
+    { id: 98, type: "通用", en: "I'm sorry, I don't understand. Could you repeat that?", cn: "抱歉我没听懂，能再说一遍吗？", level: 0 },
+    { id: 99, type: "通用", en: "Could you speak a little more slowly, please?", cn: "能说慢一点吗？", level: 0 },
+    { id: 100, type: "通用", en: "Where is the restroom?", cn: "洗手间在哪里？", level: 0 },
+    { id: 101, type: "通用", en: "Thank you so much for your help!", cn: "非常感谢你的帮助！", level: 0 },
+    { id: 102, type: "通用", en: "I'm sorry, my English is not very good.", cn: "不好意思，我的英语不太好。", level: 0 },
+    { id: 103, type: "通用", en: "Could you write that down for me?", cn: "能把那个写下来给我吗？", level: 0 },
+    { id: 104, type: "通用", en: "What does this word mean?", cn: "这个词是什么意思？", level: 0 },
+    { id: 105, type: "通用", en: "How do you say this in English?", cn: "这个用英语怎么说？", level: 0 },
+    { id: 106, type: "通用", en: "Is there someone here who speaks Chinese?", cn: "这里有人会说中文吗？", level: 0 },
+    { id: 107, type: "通用", en: "I appreciate your patience.", cn: "感谢你的耐心。", level: 0 },
+    { id: 108, type: "通用", en: "Could you point me in the right direction?", cn: "能给我指一下方向吗？", level: 0 }
 ];
 
-let phrases = JSON.parse(localStorage.getItem('oral_ai_v6_data')) || defaultPhrases;
-let currentTheme = localStorage.getItem('oral_ai_theme') || 'light';
-let currentStyle = localStorage.getItem('oral_ai_style') || 'modern';
-let currentFont = localStorage.getItem('oral_ai_font') || 'inherit';
-let currentFontSize = localStorage.getItem('oral_ai_font_size') || '100';
-let apiKey = localStorage.getItem('oral_ai_apiKey') || "";
-let currentVoice = localStorage.getItem('oral_ai_voice') || '0';
-let currentRate = localStorage.getItem('oral_ai_rate') || '1';
-let currentPitch = localStorage.getItem('oral_ai_pitch') || '1';
+// 集中加载所有持久化数据
+let phrases     = Storage.loadJSON(STORAGE_KEYS.PHRASES, defaultPhrases);
+let currentTheme    = Storage.load(STORAGE_KEYS.THEME, 'light');
+let currentStyle    = Storage.load(STORAGE_KEYS.STYLE, 'modern');
+let currentFont     = Storage.load(STORAGE_KEYS.FONT, 'inherit');
+let currentFontSize = Storage.load(STORAGE_KEYS.FONT_SIZE, '100');
+let apiKey          = Storage.load(STORAGE_KEYS.API_KEY, '');
+let currentVoice    = Storage.load(STORAGE_KEYS.VOICE, '0');
+let currentRate     = Storage.load(STORAGE_KEYS.RATE, '1');
+let currentPitch    = Storage.load(STORAGE_KEYS.PITCH, '1');
 
 let isAutoPlaying = false;
 let isRecording = false;
@@ -44,8 +205,14 @@ function getFilteredPhrases() {
     );
 }
 
+// 持久化短语数据（纯存储，不触发 UI）
+function savePhrases() {
+    Storage.saveJSON(STORAGE_KEYS.PHRASES, phrases);
+}
+
+// 持久化 + 刷新 UI（每次数据变动后调用）
 function saveAndSync() {
-    localStorage.setItem('oral_ai_v6_data', JSON.stringify(phrases));
+    savePhrases();
     renderStudyList();
     renderManageList();
 }
@@ -100,7 +267,7 @@ function restoreVoiceSettings() {
 // ===== 主题与视觉 =====
 function toggleTheme() {
     currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('oral_ai_theme', currentTheme);
+    Storage.save(STORAGE_KEYS.THEME, currentTheme);
     applyTheme();
 }
 
@@ -116,7 +283,7 @@ function applyTheme() {
 
 function applyStyle(style) {
     currentStyle = style;
-    localStorage.setItem('oral_ai_style', style);
+    Storage.save(STORAGE_KEYS.STYLE, style);
     document.documentElement.setAttribute('data-style', style);
 
     const styles = ['modern', 'github', 'retro', 'academic', 'cyber'];
@@ -139,8 +306,8 @@ function updateVisualSettings() {
     const fontSizeRange = document.getElementById('fontSizeRange');
     if (fontSelect) currentFont = fontSelect.value;
     if (fontSizeRange) currentFontSize = fontSizeRange.value;
-    localStorage.setItem('oral_ai_font', currentFont);
-    localStorage.setItem('oral_ai_font_size', currentFontSize);
+    Storage.save(STORAGE_KEYS.FONT, currentFont);
+    Storage.save(STORAGE_KEYS.FONT_SIZE, currentFontSize);
     applyVisualSettings();
 }
 
@@ -388,7 +555,8 @@ function exportData() {
     a.href = url;
     a.download = `oral_ai_backup_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    // 延迟释放 Blob URL 以确保下载完成 (参考 command-hub)
+    setTimeout(() => URL.revokeObjectURL(url), 100);
     showToast(`已导出 ${phrases.length} 条短语`);
 }
 
@@ -480,7 +648,7 @@ function closeAiModal() {
 // ===== 设置与其他 =====
 function saveApiKey() {
     apiKey = document.getElementById('apiKeyInput').value;
-    localStorage.setItem('oral_ai_apiKey', apiKey);
+    Storage.save(STORAGE_KEYS.API_KEY, apiKey);
     showToast("API Key 已保存");
 }
 
@@ -506,13 +674,21 @@ function updateSettings() {
     const voiceSelect = document.getElementById('voiceSelect');
     if (rateVal && rateRange) rateVal.innerText = rateRange.value;
     if (pitchVal && pitchRange) pitchVal.innerText = pitchRange.value;
-    if (rateRange) { currentRate = rateRange.value; localStorage.setItem('oral_ai_rate', currentRate); }
-    if (pitchRange) { currentPitch = pitchRange.value; localStorage.setItem('oral_ai_pitch', currentPitch); }
-    if (voiceSelect) { currentVoice = voiceSelect.value; localStorage.setItem('oral_ai_voice', currentVoice); }
+    if (rateRange) { currentRate = rateRange.value; Storage.save(STORAGE_KEYS.RATE, currentRate); }
+    if (pitchRange) { currentPitch = pitchRange.value; Storage.save(STORAGE_KEYS.PITCH, currentPitch); }
+    if (voiceSelect) { currentVoice = voiceSelect.value; Storage.save(STORAGE_KEYS.VOICE, currentVoice); }
+}
+
+// 加载默认短语库（参考 command-hub 的 loadDefaultDatabase）
+function loadDefaultPhrases() {
+    if (!confirm('加载默认数据会覆盖当前所有短语，确定继续吗？')) return;
+    phrases = JSON.parse(JSON.stringify(defaultPhrases));
+    saveAndSync();
+    showToast(`已加载 ${phrases.length} 条默认短语`);
 }
 
 function clearData() {
-    if (confirm("确定重置？")) { localStorage.clear(); location.reload(); }
+    if (confirm("确定重置所有数据和设置？")) { Storage.clearAll(); location.reload(); }
 }
 
 function toggleBlur() {
